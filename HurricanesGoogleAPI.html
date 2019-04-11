@@ -1,0 +1,243 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Hurricane Viewer Google Maps</title>
+        <style>
+            #div1 {
+              border: 1px solid black;
+              width : 1275px;
+              margin: 0 auto;  /* center content horizontally */
+            }
+            #sel1 {
+                font-family: Arial;
+                font-size  : 24px; 
+                position   : absolute;
+                background-color: blue;
+                color: white;
+
+            }
+            #firstHeading {
+                color: blue;
+            }
+            /* Always set the map height explicitly to define the size of the div
+             * element that contains the map. */
+            #map {
+                height: 100%;
+            }
+            /* Optional: Makes the sample page fill the window. */
+            html, body {
+                height: 98%;
+                margin: 0;
+                padding: 0;
+            }
+        </style>
+        <script type="text/javascript" src="hurricaneData.js"></script>
+    </head>
+    <body>
+
+    <div id="map"></div>
+
+    <select id="sel1">
+        <option value="">Select Hurricane</option>
+        <option value="DEAN">Dean</option>
+        <option value="HARVEY">Harvey</option>
+        <option value="IRMA">Irma</option>
+        <option value="KATRINA">Katrina</option>
+        <option value="MARIA">Maria</option>
+        <option value="SANDY">Sandy</option>
+    </select>
+
+    <script>
+
+        // Acts as an IIFE, Google needs to see the initMap() function from the API key below
+        // Nothing populates the global space besides initMap() function which is needed
+        function initMap() {
+
+            // Creates Google map object
+            let map = new google.maps.Map(document.getElementById('map'), {
+
+                // Centered in Atlantic Ocean
+                center: {lat: 31.266785, lng: -59.540726},
+                zoom: 4.5
+
+            });
+
+            // Gets </select> for the hurricane selections
+            const selectHurricane = document.getElementById("sel1");
+
+            // Adds event listener for when a hurricane is selected (MAIN METHOD)
+            selectHurricane.addEventListener("change", (event) => {
+
+                // Gets current hurricane selected
+                let hurricane = event.currentTarget;
+
+                // Delete current hurricane's markers that is displayed
+                clearMarkers(null);
+                markers = [];
+
+                // Display data for currently selected hurricane
+                setMarkers(map, hurricane);
+
+            });
+
+            // "null" is passed into map to clear all markers when a new hurricane selection is made
+            function clearMarkers(map) {
+                for (let i = 0; i < markers.length; i++) {
+                    markers[i].setMap(map);
+                }
+            }
+
+            // Holds all the markers (Different hurricane locations)
+            let markers = [];
+
+            // Function to set the markers of the selected hurricane's locations
+            function setMarkers(map, hurricane) {
+
+                // Loops through hurricanes and sets a marker for each one
+                for (let i = 0; i < hurricaneData[hurricane.value].length; i++) {
+
+                    // Gets radius (multiplies it by 2 to get diameter) by choosing first radius value from 34 knots element
+                    let d = hurricaneData[hurricane.value][i].radii34kt[0];
+
+                    // Sets proportions for diameter
+                    if (d <= 0) {
+
+                        d = 1;
+
+                    } else {
+
+                        // Keeps all hurricane markers proportional
+                        d *= 0.2;
+
+                    }
+
+                    // Sets URL for different categories
+                    let categoryImage;
+                    // Gets wind speed from current location of selected hurricane
+                    let windSpeed = hurricaneData[hurricane.value][i].windMax;
+
+                    /* Setting category
+                       The category is based on the max wind speeds in knots
+                       measured by the Saffir-Simpson Hurricane Wind Scale, values 1 through 5
+                     */
+                    if (windSpeed >= 64 && windSpeed <= 82) {                   // Category 1
+                        categoryImage = "https://i.ibb.co/gmX3tf9/cat1.png";
+                    } else if (windSpeed >= 83 && windSpeed <= 95) {            // Category 2
+                        categoryImage = "https://i.ibb.co/ZB8Yt6b/cat2.png";
+                    } else if (windSpeed >= 96 && windSpeed <= 112) {           // Category 3
+                        categoryImage = "https://i.ibb.co/nD5Hswg/cat3.png";
+                    } else if (windSpeed >= 113 && windSpeed <= 136) {          // Category 4
+                        categoryImage = "https://i.ibb.co/FBTKrkJ/cat4.png";
+                    } else if (windSpeed >= 137) {                              // Category 5
+                        categoryImage = "https://i.ibb.co/BfT8HGg/cat5.png";
+                    } else {                                                    // No Category
+                        categoryImage = "https://i.ibb.co/tsT366R/cat0.png";
+                    }
+
+                    // Origins, anchor positions and coordinates of the marker increase in the X
+                    // direction to the right and in the Y direction down.
+                    let image = {
+
+                        // This is the image for each different category (set above)
+                        url: categoryImage,
+                        // From hurricane data radius, "d" = 2*r (set above)
+                        scaledSize: new google.maps.Size(d, d),
+                        // The origin for this image is (0, 0).
+                        origin: new google.maps.Point(0, 0),
+                        // The anchor for this image is the base of the flagpole at (0, 32).
+                        anchor: new google.maps.Point(0, 32),
+
+                    };
+
+                    // Clickable area for the hurricane markers
+                    let shape = {
+                        scaledSize:  new google.maps.Size(d/3, d/3)
+                    };
+
+                    // Gets latitude and longitude for hurricane's path
+                    let lat = parseFloat(hurricaneData[hurricane.value][i].latitude);
+                    let long = parseFloat(hurricaneData[hurricane.value][i].longitude) * -1;
+
+                    // Creates new Google marker object for selected hurricane locations
+                    let marker = new google.maps.Marker({
+
+                        position: {lat: lat, lng: long},
+                        map: map,
+                        icon: image,
+                        shape: shape,
+                        title: hurricane.value,
+
+                    });
+
+                    // Adds marker to markers array
+                    markers.push(marker);
+
+
+                    // Sets hurricane category so it can be displayed in infowindow
+                    if (windSpeed >= 64 && windSpeed <= 82) {                   // Category 1
+                        markers[i].hurricaneCat = 1;
+                    } else if (windSpeed >= 83 && windSpeed <= 95) {            // Category 2
+                        markers[i].hurricaneCat = 2;
+                    } else if (windSpeed >= 96 && windSpeed <= 112) {           // Category 3
+                        markers[i].hurricaneCat = 3;
+                    } else if (windSpeed >= 113 && windSpeed <= 136) {          // Category 4
+                        markers[i].hurricaneCat = 4;
+                    } else if (windSpeed >= 137) {                              // Category 5
+                        markers[i].hurricaneCat = 5;
+                    } else {                                                    // No Category
+                        markers[i].hurricaneCat = 0;
+                    }
+
+                    // Sets wind speed
+                    markers[i].windSpeed = windSpeed;
+                    // Sets date
+                    markers[i].hurricaneDate = hurricaneData[hurricane.value][i].date;
+
+                    let tempDate = markers[i].hurricaneDate;
+
+                    // Reformat date
+                    tempDate = formatDate(tempDate);
+                    markers[i].hurricaneDate = tempDate;
+
+                    // Adds click event listener to marker
+                    marker.addListener('click', function () {
+
+                        // Content that is displayed in infowindow
+                        var contentString = '<div id="content">' +
+                            '<div id="siteNotice">' +
+                            '</div>' +
+                            '<h1 id="firstHeading" class="firstHeading">Hurricane: ' + hurricane.value + ' </h1>' +
+                            '<h2>Category: ' + markers[i].hurricaneCat + '</h2>' +
+                            '<h2>Max Wind Speed: ' + markers[i].windSpeed + '</h2>' +
+                            '<h2>Date: ' + markers[i].hurricaneDate + '</h2>' +
+                            '</div>';
+
+                        // content is set to infowindow
+                        var infowindow = new google.maps.InfoWindow({
+                            content: contentString
+                        });
+
+                        // Displays infowindow
+                        infowindow.open(map, marker);
+
+                    });
+
+                }
+
+                // Converts date to yyyy-mm-dd
+                function formatDate(date) {
+
+                    return [date.substr(0, 4), date.substr(4, 2), date.substr(6)].join('-');
+
+                }
+            }
+        }
+    </script>
+
+    <!--Google Maps API key from Derek Kneisel-->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCMTJNpKV-zM2yjKLYREIJwG4tmqQ8EngQ&callback=initMap"
+            async defer>
+    </script>
+
+    </body>
+</html>
